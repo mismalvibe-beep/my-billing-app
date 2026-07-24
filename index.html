@@ -18,6 +18,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
   :root{
     --ink:#152238;
@@ -179,6 +181,37 @@
 
   ::-webkit-scrollbar{width:7px;}
   ::-webkit-scrollbar-thumb{background:var(--line); border-radius:10px;}
+
+  /* ---- Mobile layout ---- */
+  @media (max-width: 768px){
+    .app{flex-direction:column;}
+    .sidebar{
+      position:fixed; bottom:0; left:0; right:0; top:auto; width:100%; height:66px;
+      flex-direction:row; align-items:stretch; justify-content:space-around;
+      padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px)) 6px; z-index:40;
+      box-shadow:0 -2px 14px rgba(0,0,0,0.18); border-top:1px solid rgba(255,255,255,0.08);
+    }
+    .brand, .sidebar-foot{display:none;}
+    .nav-btn{
+      flex-direction:column; justify-content:center; gap:2px; flex:1;
+      font-size:10px; padding:6px 2px; text-align:center; border-radius:10px; margin-bottom:0;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .nav-btn .ic{font-size:19px;}
+    .nav-btn.active{background:var(--gold);}
+    .main{padding:16px 14px 90px 14px;}
+    .page-head{flex-direction:column; align-items:flex-start; gap:6px;}
+    .page-head h1{font-size:19px;}
+    .stat-grid{grid-template-columns:repeat(2,1fr); gap:10px;}
+    .stat{padding:13px 14px;}
+    .stat .value{font-size:20px;}
+    .grid-2{grid-template-columns:1fr;}
+    .field-row{grid-template-columns:1fr;}
+    .scan-bar{flex-wrap:wrap;}
+    .scan-bar input{min-width:0; flex:1 1 100%;}
+    .prod-grid{grid-template-columns:repeat(2,1fr);}
+    .modal{width:92vw;}
+  }
 </style>
 </head>
 <body>
@@ -190,8 +223,9 @@
       <div class="sub">கடை பில்லிங் மேலாண்மை</div>
     </div>
     <button class="nav-btn active" data-tab="dashboard"><span class="ic">◆</span> டேஷ்போர்டு</button>
-    <button class="nav-btn" data-tab="products"><span class="ic">▤</span> பொருட்கள் / இருப்பு</button>
+    <button class="nav-btn" data-tab="products"><span class="ic">▤</span> பொருட்கள்</button>
     <button class="nav-btn" data-tab="billing"><span class="ic">₹</span> பில்லிங்</button>
+    <button class="nav-btn" data-tab="settings"><span class="ic">⚙</span> செட்டிங்ஸ்</button>
     <div class="sidebar-foot">தரவு இந்த சாதனத்தில் சேமிக்கப்படுகிறது.</div>
   </div>
 
@@ -234,6 +268,7 @@
           <h1>பொருட்கள் / இருப்பு</h1>
           <p>பார்கோடு ஸ்கேன் செய்யவும் அல்லது கைமுறையாக சேர்க்கவும்</p>
         </div>
+        <button class="btn btn-outline" id="pdf-export-btn">📄 PDF பதிவிறக்கம்</button>
       </div>
 
       <div class="scan-bar">
@@ -324,6 +359,30 @@
       </div>
     </div>
 
+    <!-- SETTINGS -->
+    <div id="tab-settings" class="hidden">
+      <div class="page-head">
+        <div>
+          <h1>செட்டிங்ஸ்</h1>
+          <p>Google Sheets-உடன் தரவை ஒத்திசைவு செய்யவும்</p>
+        </div>
+      </div>
+      <div class="card" style="max-width:480px;">
+        <h3 style="margin-top:0;">Google Sheets Backup</h3>
+        <p style="font-size:13px; color:var(--ink-soft); line-height:1.6;">Google Apps Script "Web App URL"-ஐ கீழே ஒட்டவும்.</p>
+        <div class="field">
+          <label>Web App URL</label>
+          <input id="sheet-url" placeholder="https://script.google.com/macros/s/.../exec">
+        </div>
+        <button class="btn btn-outline btn-full" id="sheet-url-save" style="margin-bottom:14px;">URL சேமி</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-gold btn-full" id="sheet-push-btn">⬆ Sheet-க்கு அனுப்பு</button>
+          <button class="btn btn-green btn-full" id="sheet-pull-btn">⬇ Sheet-இலிருந்து பெறு</button>
+        </div>
+        <div id="sheet-status" style="font-size:12.5px; color:var(--ink-soft); margin-top:12px;"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -408,12 +467,13 @@ $all('.nav-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     $all('.nav-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
-    ['dashboard','products','billing'].forEach(t=>{
+    ['dashboard','products','billing','settings'].forEach(t=>{
       $('#tab-'+t).classList.toggle('hidden', t !== btn.dataset.tab);
     });
     if(btn.dataset.tab==='dashboard') renderDashboard();
     if(btn.dataset.tab==='products') renderProducts();
     if(btn.dataset.tab==='billing') renderBilling();
+    if(btn.dataset.tab==='settings') renderSettings();
   });
 });
 
@@ -755,6 +815,85 @@ $('#modal-close-btn').addEventListener('click', ()=>{
   $('#checkout-modal').classList.add('hidden');
   renderBilling();
   renderDashboard();
+});
+
+/* ---------- PDF EXPORT ---------- */
+$('#pdf-export-btn').addEventListener('click', ()=>{
+  if(products.length===0){ showToast('பொருட்கள் இல்லை'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(15);
+  doc.text('Inventory Report', 14, 16);
+  doc.setFontSize(10);
+  const d = new Date();
+  doc.text('Generated: ' + d.toLocaleDateString('en-IN') + ' ' + d.toLocaleTimeString('en-IN'), 14, 22);
+
+  const rows = products.map(p=>[
+    p.name, p.barcode, p.category||'-', p.price.toFixed(2), p.stock, (p.price*p.stock).toFixed(2)
+  ]);
+  const totalValue = products.reduce((a,p)=>a+p.price*p.stock,0);
+
+  doc.autoTable({
+    startY: 28,
+    head: [['Product Name','Barcode','Category','Price (Rs)','Stock','Value (Rs)']],
+    body: rows,
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [21,34,56] },
+    foot: [['','','','Total Stock Value','', totalValue.toFixed(2)]],
+    footStyles: { fillColor: [242,228,200], textColor: [21,34,56], fontStyle:'bold' }
+  });
+
+  doc.save('inventory-' + Date.now() + '.pdf');
+});
+
+/* ---------- SETTINGS: GOOGLE SHEETS SYNC ---------- */
+function renderSettings(){
+  const saved = localStorage.getItem('kb_sheet_url') || '';
+  $('#sheet-url').value = saved;
+  $('#sheet-status').textContent = '';
+}
+
+$('#sheet-url-save').addEventListener('click', ()=>{
+  const url = $('#sheet-url').value.trim();
+  localStorage.setItem('kb_sheet_url', url);
+  showToast('URL சேமிக்கப்பட்டது');
+});
+
+$('#sheet-push-btn').addEventListener('click', async ()=>{
+  const url = localStorage.getItem('kb_sheet_url');
+  if(!url){ showToast('முதலில் Web App URL சேமிக்கவும்'); return; }
+  $('#sheet-status').textContent = 'அனுப்பப்படுகிறது...';
+  try{
+    await fetch(url, {
+      method:'POST',
+      mode:'no-cors',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify({ products, sales })
+    });
+    $('#sheet-status').textContent = 'அனுப்பப்பட்டது ✓ (Sheet-ஐ திறந்து சரிபார்க்கவும்)';
+    showToast('Sheet-க்கு அனுப்பப்பட்டது');
+  }catch(e){
+    $('#sheet-status').textContent = 'பிழை — URL சரியா என சரிபார்க்கவும்';
+  }
+});
+
+$('#sheet-pull-btn').addEventListener('click', async ()=>{
+  const url = localStorage.getItem('kb_sheet_url');
+  if(!url){ showToast('முதலில் Web App URL சேமிக்கவும்'); return; }
+  $('#sheet-status').textContent = 'பெறப்படுகிறது...';
+  try{
+    const res = await fetch(url, { method:'GET' });
+    const data = await res.json();
+    if(data.products) products = data.products.map(p=>({...p, price:Number(p.price), stock:Number(p.stock)}));
+    if(data.sales) sales = data.sales.map(s=>({...s, total:Number(s.total)}));
+    await saveProducts();
+    await saveSales();
+    $('#sheet-status').textContent = `பெறப்பட்டது ✓ (${products.length} பொருட்கள், ${sales.length} பில்கள்)`;
+    showToast('Sheet-இலிருந்து பெறப்பட்டது');
+    renderDashboard(); renderProducts(); renderBilling();
+  }catch(e){
+    $('#sheet-status').textContent = 'பிழை — URL சரியா என சரிபார்க்கவும்';
+  }
 });
 
 /* ---------- INIT ---------- */
