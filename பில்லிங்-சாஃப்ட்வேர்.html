@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>கடை பில்லிங் — Ledger POS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#152238;
+    --ink-soft:#3c4a63;
+    --paper:#F7F7F4;
+    --paper-card:#FFFFFF;
+    --line:#E2E1DA;
+    --gold:#B8862E;
+    --gold-soft:#F2E4C8;
+    --green:#2F6B4F;
+    --green-soft:#E3EFE7;
+    --red:#B23A3A;
+    --red-soft:#F6E4E1;
+    --sidebar:#152238;
+    --sidebar-soft:#25355A;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Noto Sans Tamil','Space Grotesk',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .num{font-family:'Space Grotesk','Noto Sans Tamil',sans-serif;}
+  .app{display:flex; min-height:100vh;}
+
+  /* Sidebar */
+  .sidebar{
+    width:210px; background:var(--sidebar); color:#EDEEF4;
+    display:flex; flex-direction:column; padding:24px 14px; flex-shrink:0;
+  }
+  .brand{padding:0 10px 22px 10px; border-bottom:1px solid rgba(255,255,255,0.12); margin-bottom:18px;}
+  .brand .mark{font-family:'Space Grotesk'; font-weight:700; font-size:22px; letter-spacing:0.5px; color:var(--gold-soft);}
+  .brand .sub{font-size:12px; color:#9AA5BD; margin-top:4px;}
+  .nav-btn{
+    display:flex; align-items:center; gap:10px;
+    padding:11px 12px; border-radius:8px; margin-bottom:4px;
+    color:#C7CEE0; cursor:pointer; font-size:15px; border:none; background:none; width:100%; text-align:left;
+    font-family:inherit;
+  }
+  .nav-btn .ic{width:18px; text-align:center;}
+  .nav-btn:hover{background:var(--sidebar-soft); color:#fff;}
+  .nav-btn.active{background:var(--gold); color:#1a1305; font-weight:600;}
+  .sidebar-foot{margin-top:auto; padding:10px; font-size:11px; color:#7986A5; border-top:1px solid rgba(255,255,255,0.1); padding-top:14px;}
+
+  /* Main */
+  .main{flex:1; padding:26px 30px; overflow-x:hidden;}
+  .page-head{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:20px;}
+  .page-head h1{font-size:22px; margin:0 0 4px 0; font-weight:700;}
+  .page-head p{margin:0; color:var(--ink-soft); font-size:13.5px;}
+  .hidden{display:none !important;}
+
+  /* Cards */
+  .card{background:var(--paper-card); border:1px solid var(--line); border-radius:12px; padding:18px 20px;}
+  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px;}
+  @media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr);}}
+  .stat{padding:16px 18px;}
+  .stat .label{font-size:12.5px; color:var(--ink-soft); margin-bottom:8px;}
+  .stat .value{font-family:'Space Grotesk'; font-size:26px; font-weight:700;}
+  .stat.gold .value{color:var(--gold);}
+  .stat.green .value{color:var(--green);}
+  .stat.red .value{color:var(--red);}
+
+  .grid-2{display:grid; grid-template-columns:1.4fr 1fr; gap:16px;}
+  @media(max-width:900px){.grid-2{grid-template-columns:1fr;}}
+
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  th{text-align:left; color:var(--ink-soft); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.3px; padding:8px 10px; border-bottom:1px solid var(--line);}
+  td{padding:10px 10px; border-bottom:1px solid var(--line); vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  .tag{display:inline-block; padding:2px 9px; border-radius:20px; font-size:11.5px; font-weight:600;}
+  .tag.ok{background:var(--green-soft); color:var(--green);}
+  .tag.low{background:var(--red-soft); color:var(--red);}
+
+  .btn{
+    border:none; border-radius:8px; padding:10px 16px; font-size:13.5px; font-weight:600;
+    cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn-gold{background:var(--gold); color:#221904;}
+  .btn-gold:hover{background:#a5751f;}
+  .btn-outline{background:none; border:1px solid var(--line); color:var(--ink);}
+  .btn-outline:hover{border-color:var(--gold); color:var(--gold);}
+  .btn-ghost{background:none; border:none; color:var(--ink-soft); padding:4px 6px;}
+  .btn-ghost:hover{color:var(--red);}
+  .btn-sm{padding:5px 9px; font-size:12px; border-radius:6px;}
+  .btn-full{width:100%; justify-content:center;}
+  .btn-green{background:var(--green); color:#fff;}
+
+  input, select{
+    font-family:inherit; border:1px solid var(--line); border-radius:8px; padding:9px 11px;
+    font-size:13.5px; background:#fff; color:var(--ink); width:100%;
+  }
+  input:focus, select:focus{outline:none; border-color:var(--gold);}
+  label{font-size:12px; color:var(--ink-soft); display:block; margin-bottom:5px; font-weight:600;}
+  .field{margin-bottom:12px;}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+
+  .scan-bar{display:flex; gap:10px; margin-bottom:18px;}
+  .scan-bar input{font-size:15px; padding:12px 14px;}
+  .scan-bar .scan-ic{font-size:15px;}
+
+  /* Product grid for billing */
+  .prod-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:12px;}
+  .prod-tile{
+    background:#fff; border:1px solid var(--line); border-radius:10px; padding:13px;
+    cursor:pointer; transition:border-color .15s, transform .1s;
+  }
+  .prod-tile:hover{border-color:var(--gold); transform:translateY(-1px);}
+  .prod-tile:active{transform:translateY(0px) scale(0.98);}
+  .prod-tile .pname{font-weight:600; font-size:13.5px; margin-bottom:6px; line-height:1.3;}
+  .prod-tile .pprice{font-family:'Space Grotesk'; color:var(--gold); font-weight:700; font-size:15px;}
+  .prod-tile .pstock{font-size:11px; color:var(--ink-soft); margin-top:4px;}
+  .prod-tile.out{opacity:0.45; cursor:not-allowed;}
+
+  /* Receipt / cart */
+  .receipt{
+    background:#fff; border:1px solid var(--line); border-radius:2px;
+    position:relative; padding:18px 16px 16px 16px;
+    background-image:
+      radial-gradient(circle at 0 100%, transparent 6px, #fff 6.5px),
+      radial-gradient(circle at 100% 100%, transparent 6px, #fff 6.5px);
+  }
+  .receipt-serrated{
+    height:8px; width:100%;
+    background-image: linear-gradient(135deg, var(--paper) 25%, transparent 25%), linear-gradient(225deg, var(--paper) 25%, transparent 25%);
+    background-size: 12px 12px; background-position: bottom;
+    margin-top:-1px;
+  }
+  .receipt-head{text-align:center; border-bottom:1px dashed var(--line); padding-bottom:10px; margin-bottom:10px;}
+  .receipt-head .t1{font-family:'Space Grotesk'; font-weight:700; letter-spacing:1px; font-size:13px; color:var(--ink-soft);}
+  .cart-list{max-height:260px; overflow-y:auto; margin-bottom:10px;}
+  .cart-row{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--line); font-size:13px;}
+  .cart-row:last-child{border-bottom:none;}
+  .cart-row .ci-name{flex:1; padding-right:8px;}
+  .cart-row .ci-name .sub{font-size:11px; color:var(--ink-soft); font-family:'Space Grotesk';}
+  .qty-ctrl{display:flex; align-items:center; gap:6px; margin:0 8px;}
+  .qty-ctrl button{width:20px; height:20px; border-radius:5px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:12px; line-height:1;}
+  .cart-empty{text-align:center; color:var(--ink-soft); font-size:13px; padding:30px 10px;}
+  .receipt-totals{border-top:1px dashed var(--line); padding-top:10px; margin-top:6px;}
+  .trow{display:flex; justify-content:space-between; font-size:13.5px; padding:3px 0;}
+  .trow.grand{font-family:'Space Grotesk'; font-weight:700; font-size:18px; color:var(--ink); padding-top:8px; margin-top:4px; border-top:1px solid var(--line);}
+  .trow.grand .amt{color:var(--gold);}
+
+  /* Modal (checkout final page) */
+  .modal-back{position:fixed; inset:0; background:rgba(21,34,56,0.55); display:flex; align-items:center; justify-content:center; z-index:50;}
+  .modal{background:#fff; border-radius:14px; width:380px; max-width:92vw; padding:26px 26px 22px 26px;}
+  .modal h2{margin:0 0 4px 0; font-size:18px;}
+  .modal .sub{color:var(--ink-soft); font-size:13px; margin-bottom:18px;}
+  .pay-total{text-align:center; background:var(--gold-soft); border-radius:10px; padding:18px; margin-bottom:18px;}
+  .pay-total .lbl{font-size:12.5px; color:#7a5d1f; margin-bottom:4px;}
+  .pay-total .val{font-family:'Space Grotesk'; font-size:32px; font-weight:700; color:var(--gold);}
+  .pay-methods{display:flex; gap:8px; margin-bottom:18px;}
+  .pm-btn{flex:1; padding:10px 6px; border-radius:8px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:12.5px; font-weight:600; color:var(--ink-soft); font-family:inherit;}
+  .pm-btn.sel{border-color:var(--gold); background:var(--gold-soft); color:#7a5d1f;}
+  .modal-actions{display:flex; gap:8px;}
+  .success-tick{width:52px; height:52px; border-radius:50%; background:var(--green-soft); color:var(--green); display:flex; align-items:center; justify-content:center; font-size:26px; margin:0 auto 14px auto;}
+
+  .toast{position:fixed; bottom:20px; right:20px; background:var(--ink); color:#fff; padding:12px 18px; border-radius:8px; font-size:13.5px; z-index:60; box-shadow:0 6px 18px rgba(0,0,0,0.2);}
+
+  ::-webkit-scrollbar{width:7px;}
+  ::-webkit-scrollbar-thumb{background:var(--line); border-radius:10px;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="brand">
+      <div class="mark">கணக்கு போக்கு</div>
+      <div class="sub">கடை பில்லிங் மேலாண்மை</div>
+    </div>
+    <button class="nav-btn active" data-tab="dashboard"><span class="ic">◆</span> டேஷ்போர்டு</button>
+    <button class="nav-btn" data-tab="products"><span class="ic">▤</span> பொருட்கள் / இருப்பு</button>
+    <button class="nav-btn" data-tab="billing"><span class="ic">₹</span> பில்லிங்</button>
+    <div class="sidebar-foot">தரவு இந்த சாதனத்தில் சேமிக்கப்படுகிறது.</div>
+  </div>
+
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard">
+      <div class="page-head">
+        <div>
+          <h1>டேஷ்போர்டு</h1>
+          <p>மொத்த வியாபாரம் மற்றும் இருப்பு நிலவரம்</p>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="card stat gold"><div class="label">மொத்த வியாபாரம் (இதுவரை)</div><div class="value num" id="st-revenue">₹0</div></div>
+        <div class="card stat green"><div class="label">இருப்பு மதிப்பு</div><div class="value num" id="st-stockvalue">₹0</div></div>
+        <div class="card stat"><div class="label">மொத்த பொருட்கள்</div><div class="value num" id="st-items">0</div></div>
+        <div class="card stat red"><div class="label">குறைவான இருப்பு</div><div class="value num" id="st-low">0</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin-top:0;">சமீபத்திய பில்கள்</h3>
+          <table><thead><tr><th>நேரம்</th><th>பொருட்கள்</th><th>மொத்தம்</th></tr></thead>
+            <tbody id="recent-sales-body"></tbody>
+          </table>
+          <div id="no-sales" class="cart-empty hidden">இதுவரை பில் எதுவும் இல்லை</div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0;">அதிக விற்பனை பொருட்கள்</h3>
+          <div id="top-products"></div>
+          <div id="no-top" class="cart-empty hidden">தரவு இல்லை</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRODUCTS -->
+    <div id="tab-products" class="hidden">
+      <div class="page-head">
+        <div>
+          <h1>பொருட்கள் / இருப்பு</h1>
+          <p>பார்கோடு ஸ்கேன் செய்யவும் அல்லது கைமுறையாக சேர்க்கவும்</p>
+        </div>
+      </div>
+
+      <div class="scan-bar">
+        <input id="scan-input" type="text" placeholder="🔍 பார்கோடு ஸ்கேன் செய்யவும் (அல்லது தட்டச்சு செய்து Enter அழுத்தவும்)" autocomplete="off">
+        <button class="btn btn-gold" id="scan-add-btn">+ புதிய பொருள் சேர்</button>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin-top:0;">இருப்பு பட்டியல்</h3>
+          <table>
+            <thead><tr><th>பெயர்</th><th>பார்கோடு</th><th>விலை</th><th>இருப்பு</th><th>நிலை</th><th></th></tr></thead>
+            <tbody id="products-body"></tbody>
+          </table>
+          <div id="no-products" class="cart-empty hidden">இன்னும் பொருட்கள் சேர்க்கவில்லை</div>
+        </div>
+
+        <div class="card" id="product-form-card">
+          <h3 style="margin-top:0;" id="form-title">புதிய பொருள் சேர்</h3>
+          <input type="hidden" id="pf-editid">
+          <div class="field">
+            <label>பொருளின் பெயர்</label>
+            <input id="pf-name" placeholder="எ.கா. பாஸ்மதி அரிசி 1kg">
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>பார்கோடு</label>
+              <input id="pf-barcode" placeholder="எண்கள்">
+            </div>
+            <div class="field">
+              <label>வகை</label>
+              <input id="pf-category" placeholder="எ.கா. மளிகை">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>விற்பனை விலை (₹)</label>
+              <input id="pf-price" type="number" min="0" step="0.01" placeholder="0.00">
+            </div>
+            <div class="field">
+              <label>இருப்பு எண்ணிக்கை</label>
+              <input id="pf-stock" type="number" min="0" step="1" placeholder="0">
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:14px;">
+            <button class="btn btn-gold btn-full" id="pf-save">சேமி</button>
+            <button class="btn btn-outline hidden" id="pf-cancel">ரத்து</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BILLING -->
+    <div id="tab-billing" class="hidden">
+      <div class="page-head">
+        <div>
+          <h1>பில்லிங்</h1>
+          <p>பொருளைத் தொடவும் — உடனே பில்லில் சேரும்</p>
+        </div>
+      </div>
+      <div class="scan-bar">
+        <input id="bill-scan-input" type="text" placeholder="🔍 பார்கோடு ஸ்கேன் செய்யவும் — பில்லில் நேரடியாக சேரும்" autocomplete="off">
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="prod-grid" id="billing-prod-grid"></div>
+          <div id="no-billing-products" class="cart-empty hidden">முதலில் பொருட்கள் பக்கத்தில் இருப்பு சேர்க்கவும்</div>
+        </div>
+
+        <div>
+          <div class="receipt">
+            <div class="receipt-head">
+              <div class="t1">தற்போதைய பில்</div>
+            </div>
+            <div class="cart-list" id="cart-list">
+              <div class="cart-empty">பொருட்களைத் தொடவும்</div>
+            </div>
+            <div class="receipt-totals">
+              <div class="trow"><span>துணை மொத்தம்</span><span class="num" id="cart-subtotal">₹0</span></div>
+              <div class="trow grand"><span>மொத்தம்</span><span class="num amt" id="cart-grand">₹0</span></div>
+            </div>
+          </div>
+          <div class="receipt-serrated"></div>
+          <button class="btn btn-gold btn-full" style="margin-top:14px; padding:13px;" id="checkout-btn">பில் செய் →</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- CHECKOUT MODAL -->
+<div class="modal-back hidden" id="checkout-modal">
+  <div class="modal">
+    <div id="checkout-step-pay">
+      <h2>பேமெண்ட்</h2>
+      <div class="sub">நெக்ஸ்ட் மொத்த பேமெண்ட் தொகையை உறுதி செய்யவும்</div>
+      <div class="pay-total">
+        <div class="lbl">மொத்த பேமெண்ட்</div>
+        <div class="val num" id="modal-total">₹0</div>
+      </div>
+      <label>பேமெண்ட் முறை</label>
+      <div class="pay-methods">
+        <button class="pm-btn sel" data-pm="பணம்">💵 பணம்</button>
+        <button class="pm-btn" data-pm="கார்டு">💳 கார்டு</button>
+        <button class="pm-btn" data-pm="UPI">📱 UPI</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="modal-back-btn">பின் செல்</button>
+        <button class="btn btn-green btn-full" id="modal-confirm-btn">பேமெண்ட் முடிக்க</button>
+      </div>
+    </div>
+    <div id="checkout-step-done" class="hidden" style="text-align:center;">
+      <div class="success-tick">✓</div>
+      <h2>பில் முடிந்தது!</h2>
+      <div class="sub" id="done-summary"></div>
+      <button class="btn btn-gold btn-full" id="modal-close-btn" style="margin-top:6px;">புதிய பில்</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let products = [];
+let sales = [];
+let cart = []; // {id, name, price, qty}
+let selectedPM = 'பணம்';
+
+const $ = s => document.querySelector(s);
+const $all = s => document.querySelectorAll(s);
+const fmt = n => '₹' + Number(n).toLocaleString('en-IN', {maximumFractionDigits:2, minimumFractionDigits: (Number(n)%1!==0)?2:0});
+
+async function loadData(){
+  try{
+    const p = await window.storage.get('products', false);
+    products = p ? JSON.parse(p.value) : [];
+  }catch(e){ products = []; }
+  try{
+    const s = await window.storage.get('sales', false);
+    sales = s ? JSON.parse(s.value) : [];
+  }catch(e){ sales = []; }
+}
+async function saveProducts(){
+  try{ await window.storage.set('products', JSON.stringify(products), false); }catch(e){ showToast('சேமிப்பில் பிழை'); }
+}
+async function saveSales(){
+  try{ await window.storage.set('sales', JSON.stringify(sales), false); }catch(e){ showToast('சேமிப்பில் பிழை'); }
+}
+
+function showToast(msg){
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2200);
+}
+
+/* ---------- TAB NAV ---------- */
+$all('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    $all('.nav-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    ['dashboard','products','billing'].forEach(t=>{
+      $('#tab-'+t).classList.toggle('hidden', t !== btn.dataset.tab);
+    });
+    if(btn.dataset.tab==='dashboard') renderDashboard();
+    if(btn.dataset.tab==='products') renderProducts();
+    if(btn.dataset.tab==='billing') renderBilling();
+  });
+});
+
+/* ---------- DASHBOARD ---------- */
+function renderDashboard(){
+  const revenue = sales.reduce((a,s)=>a+s.total,0);
+  const stockValue = products.reduce((a,p)=>a+p.price*p.stock,0);
+  const totalItems = products.reduce((a,p)=>a+p.stock,0);
+  const lowCount = products.filter(p=>p.stock<5).length;
+  $('#st-revenue').textContent = fmt(revenue);
+  $('#st-stockvalue').textContent = fmt(stockValue);
+  $('#st-items').textContent = totalItems;
+  $('#st-low').textContent = lowCount;
+
+  const body = $('#recent-sales-body');
+  body.innerHTML = '';
+  const recent = [...sales].reverse().slice(0,8);
+  $('#no-sales').classList.toggle('hidden', recent.length>0);
+  recent.forEach(s=>{
+    const tr = document.createElement('tr');
+    const d = new Date(s.time);
+    const timeStr = d.toLocaleDateString('ta-IN') + ' ' + d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    tr.innerHTML = `<td>${timeStr}</td><td>${s.items.length} பொருள்</td><td class="num">${fmt(s.total)}</td>`;
+    body.appendChild(tr);
+  });
+
+  // top products
+  const qtyMap = {};
+  sales.forEach(s=>s.items.forEach(it=>{ qtyMap[it.name] = (qtyMap[it.name]||0) + it.qty; }));
+  const top = Object.entries(qtyMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxQty = top.length ? top[0][1] : 1;
+  const topEl = $('#top-products');
+  topEl.innerHTML = '';
+  $('#no-top').classList.toggle('hidden', top.length>0);
+  top.forEach(([name,qty])=>{
+    const row = document.createElement('div');
+    row.style.marginBottom = '10px';
+    row.innerHTML = `
+      <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
+        <span>${name}</span><span class="num" style="color:var(--gold); font-weight:600;">${qty}</span>
+      </div>
+      <div style="background:var(--line); height:6px; border-radius:4px; overflow:hidden;">
+        <div style="background:var(--gold); height:100%; width:${(qty/maxQty*100)}%;"></div>
+      </div>`;
+    topEl.appendChild(row);
+  });
+}
+
+/* ---------- PRODUCTS ---------- */
+function genBarcode(){
+  return String(Date.now()).slice(-9) + Math.floor(Math.random()*10);
+}
+
+function renderProducts(){
+  const body = $('#products-body');
+  body.innerHTML = '';
+  $('#no-products').classList.toggle('hidden', products.length>0);
+  products.forEach(p=>{
+    const tr = document.createElement('tr');
+    const low = p.stock < 5;
+    tr.innerHTML = `
+      <td><strong>${p.name}</strong>${p.category?`<div style="font-size:11px;color:var(--ink-soft);">${p.category}</div>`:''}</td>
+      <td class="num">${p.barcode}</td>
+      <td class="num">${fmt(p.price)}</td>
+      <td class="num">${p.stock}</td>
+      <td><span class="tag ${low?'low':'ok'}">${low?'குறைவு':'சரி'}</span></td>
+      <td>
+        <button class="btn btn-ghost btn-sm edit-btn" data-id="${p.id}">✎</button>
+        <button class="btn btn-ghost btn-sm del-btn" data-id="${p.id}">🗑</button>
+      </td>`;
+    body.appendChild(tr);
+  });
+  $all('.edit-btn').forEach(b=>b.addEventListener('click', ()=>editProduct(b.dataset.id)));
+  $all('.del-btn').forEach(b=>b.addEventListener('click', ()=>deleteProduct(b.dataset.id)));
+}
+
+function editProduct(id){
+  const p = products.find(x=>x.id===id);
+  if(!p) return;
+  $('#form-title').textContent = 'பொருளை திருத்து';
+  $('#pf-editid').value = p.id;
+  $('#pf-name').value = p.name;
+  $('#pf-barcode').value = p.barcode;
+  $('#pf-category').value = p.category||'';
+  $('#pf-price').value = p.price;
+  $('#pf-stock').value = p.stock;
+  $('#pf-cancel').classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function resetForm(){
+  $('#form-title').textContent = 'புதிய பொருள் சேர்';
+  $('#pf-editid').value = '';
+  $('#pf-name').value = '';
+  $('#pf-barcode').value = '';
+  $('#pf-category').value = '';
+  $('#pf-price').value = '';
+  $('#pf-stock').value = '';
+  $('#pf-cancel').classList.add('hidden');
+}
+
+async function deleteProduct(id){
+  products = products.filter(p=>p.id!==id);
+  await saveProducts();
+  renderProducts();
+  renderDashboard();
+  showToast('பொருள் நீக்கப்பட்டது');
+}
+
+$('#pf-save').addEventListener('click', async ()=>{
+  const name = $('#pf-name').value.trim();
+  const price = parseFloat($('#pf-price').value);
+  const stock = parseInt($('#pf-stock').value);
+  if(!name || isNaN(price) || isNaN(stock)){
+    showToast('பெயர், விலை, இருப்பு ஆகியவற்றை நிரப்பவும்');
+    return;
+  }
+  let barcode = $('#pf-barcode').value.trim();
+  if(!barcode) barcode = genBarcode();
+  const editId = $('#pf-editid').value;
+  const category = $('#pf-category').value.trim();
+
+  if(editId){
+    const p = products.find(x=>x.id===editId);
+    Object.assign(p, {name, barcode, category, price, stock});
+  } else {
+    products.push({id: 'p'+Date.now(), name, barcode, category, price, stock});
+  }
+  await saveProducts();
+  resetForm();
+  renderProducts();
+  renderDashboard();
+  showToast('சேமிக்கப்பட்டது');
+});
+$('#pf-cancel').addEventListener('click', resetForm);
+
+$('#scan-add-btn').addEventListener('click', ()=>{
+  resetForm();
+  $('#pf-name').focus();
+});
+
+$('#scan-input').addEventListener('keydown', async (e)=>{
+  if(e.key !== 'Enter') return;
+  const code = e.target.value.trim();
+  e.target.value = '';
+  if(!code) return;
+  const existing = products.find(p=>p.barcode===code);
+  if(existing){
+    existing.stock += 1;
+    await saveProducts();
+    renderProducts();
+    renderDashboard();
+    showToast(`${existing.name} இருப்பு +1 சேர்க்கப்பட்டது`);
+  } else {
+    resetForm();
+    $('#pf-barcode').value = code;
+    $('#pf-name').focus();
+    showToast('புதிய பார்கோடு — விவரங்களை நிரப்பி சேமிக்கவும்');
+  }
+});
+
+/* ---------- BILLING ---------- */
+function renderBilling(){
+  const grid = $('#billing-prod-grid');
+  grid.innerHTML = '';
+  $('#no-billing-products').classList.toggle('hidden', products.length>0);
+  products.forEach(p=>{
+    const out = p.stock<=0;
+    const tile = document.createElement('div');
+    tile.className = 'prod-tile' + (out?' out':'');
+    tile.innerHTML = `
+      <div class="pname">${p.name}</div>
+      <div class="pprice num">${fmt(p.price)}</div>
+      <div class="pstock">இருப்பு: ${p.stock}</div>`;
+    if(!out) tile.addEventListener('click', ()=>addToCart(p.id));
+    grid.appendChild(tile);
+  });
+  renderCart();
+}
+
+function addToCart(productId){
+  const p = products.find(x=>x.id===productId);
+  if(!p || p.stock<=0) return;
+  const inCartQty = cart.filter(c=>c.id===p.id).reduce((a,c)=>a+c.qty,0);
+  if(inCartQty >= p.stock){
+    showToast('கிடைக்கும் இருப்பு போதவில்லை');
+    return;
+  }
+  const existing = cart.find(c=>c.id===p.id);
+  if(existing) existing.qty += 1;
+  else cart.push({id:p.id, name:p.name, price:p.price, qty:1});
+  renderCart();
+}
+
+function changeQty(id, delta){
+  const item = cart.find(c=>c.id===id);
+  if(!item) return;
+  const p = products.find(x=>x.id===id);
+  const newQty = item.qty + delta;
+  if(newQty <= 0){
+    cart = cart.filter(c=>c.id!==id);
+  } else if(p && newQty > p.stock){
+    showToast('கிடைக்கும் இருப்பு போதவில்லை');
+    return;
+  } else {
+    item.qty = newQty;
+  }
+  renderCart();
+}
+
+function renderCart(){
+  const list = $('#cart-list');
+  list.innerHTML = '';
+  if(cart.length===0){
+    list.innerHTML = '<div class="cart-empty">பொருட்களைத் தொடவும்</div>';
+  }
+  cart.forEach(c=>{
+    const row = document.createElement('div');
+    row.className = 'cart-row';
+    row.innerHTML = `
+      <div class="ci-name">${c.name}<div class="sub">${fmt(c.price)} × ${c.qty}</div></div>
+      <div class="qty-ctrl">
+        <button data-id="${c.id}" data-d="-1">−</button>
+        <span class="num">${c.qty}</span>
+        <button data-id="${c.id}" data-d="1">+</button>
+      </div>
+      <div class="num" style="min-width:62px; text-align:right; font-weight:600;">${fmt(c.price*c.qty)}</div>`;
+    list.appendChild(row);
+  });
+  $all('.qty-ctrl button').forEach(b=>b.addEventListener('click', ()=>changeQty(b.dataset.id, parseInt(b.dataset.d))));
+
+  const subtotal = cart.reduce((a,c)=>a+c.price*c.qty,0);
+  $('#cart-subtotal').textContent = fmt(subtotal);
+  $('#cart-grand').textContent = fmt(subtotal);
+}
+
+$('#bill-scan-input').addEventListener('keydown', (e)=>{
+  if(e.key !== 'Enter') return;
+  const code = e.target.value.trim();
+  e.target.value = '';
+  if(!code) return;
+  const p = products.find(x=>x.barcode===code);
+  if(p) addToCart(p.id);
+  else showToast('இந்த பார்கோடுக்கு பொருள் இல்லை');
+});
+
+/* ---------- CHECKOUT MODAL ---------- */
+$('#checkout-btn').addEventListener('click', ()=>{
+  if(cart.length===0){ showToast('பில்லில் பொருட்கள் இல்லை'); return; }
+  const total = cart.reduce((a,c)=>a+c.price*c.qty,0);
+  $('#modal-total').textContent = fmt(total);
+  $('#checkout-step-pay').classList.remove('hidden');
+  $('#checkout-step-done').classList.add('hidden');
+  $('#checkout-modal').classList.remove('hidden');
+});
+$('#modal-back-btn').addEventListener('click', ()=>{
+  $('#checkout-modal').classList.add('hidden');
+});
+$all('.pm-btn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    $all('.pm-btn').forEach(x=>x.classList.remove('sel'));
+    b.classList.add('sel');
+    selectedPM = b.dataset.pm;
+  });
+});
+$('#modal-confirm-btn').addEventListener('click', async ()=>{
+  const total = cart.reduce((a,c)=>a+c.price*c.qty,0);
+  // deduct stock
+  cart.forEach(c=>{
+    const p = products.find(x=>x.id===c.id);
+    if(p) p.stock = Math.max(0, p.stock - c.qty);
+  });
+  sales.push({ id:'s'+Date.now(), time: Date.now(), items: cart.map(c=>({name:c.name, qty:c.qty, price:c.price})), total, method: selectedPM });
+  await saveProducts();
+  await saveSales();
+  $('#done-summary').textContent = `${fmt(total)} — ${selectedPM} மூலம் பெறப்பட்டது`;
+  $('#checkout-step-pay').classList.add('hidden');
+  $('#checkout-step-done').classList.remove('hidden');
+  cart = [];
+});
+$('#modal-close-btn').addEventListener('click', ()=>{
+  $('#checkout-modal').classList.add('hidden');
+  renderBilling();
+  renderDashboard();
+});
+
+/* ---------- INIT ---------- */
+(async function init(){
+  await loadData();
+  renderDashboard();
+  renderProducts();
+  renderBilling();
+})();
+</script>
+</body>
+</html>
