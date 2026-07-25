@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>கணக்கு போக்கு — கடை பில்லிங்</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#152238">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="கணக்கு போக்கு">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root{
+    --ink:#152238;
+    --ink-soft:#3c4a63;
+    --paper:#F7F7F4;
+    --paper-card:#FFFFFF;
+    --line:#E2E1DA;
+    --gold:#B8862E;
+    --gold-soft:#F2E4C8;
+    --green:#2F6B4F;
+    --green-soft:#E3EFE7;
+    --red:#B23A3A;
+    --red-soft:#F6E4E1;
+    --sidebar:#152238;
+    --sidebar-soft:#25355A;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Noto Sans Tamil','Space Grotesk',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .num{font-family:'Space Grotesk','Noto Sans Tamil',sans-serif;}
+  .app{display:flex; min-height:100vh;}
+
+  /* Sidebar */
+  .sidebar{
+    width:210px; background:var(--sidebar); color:#EDEEF4;
+    display:flex; flex-direction:column; padding:24px 14px; flex-shrink:0;
+  }
+  .brand{padding:0 10px 22px 10px; border-bottom:1px solid rgba(255,255,255,0.12); margin-bottom:18px;}
+  .brand .mark{font-family:'Space Grotesk'; font-weight:700; font-size:22px; letter-spacing:0.5px; color:var(--gold-soft);}
+  .brand .sub{font-size:12px; color:#9AA5BD; margin-top:4px;}
+  .nav-btn{
+    display:flex; align-items:center; gap:10px;
+    padding:11px 12px; border-radius:8px; margin-bottom:4px;
+    color:#C7CEE0; cursor:pointer; font-size:15px; border:none; background:none; width:100%; text-align:left;
+    font-family:inherit;
+  }
+  .nav-btn .ic{width:18px; text-align:center;}
+  .nav-btn:hover{background:var(--sidebar-soft); color:#fff;}
+  .nav-btn.active{background:var(--gold); color:#1a1305; font-weight:600;}
+  .sidebar-foot{margin-top:auto; padding:10px; font-size:11px; color:#7986A5; border-top:1px solid rgba(255,255,255,0.1); padding-top:14px;}
+
+  /* Main */
+  .main{flex:1; padding:26px 30px; overflow-x:hidden;}
+  .page-head{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:20px;}
+  .page-head h1{font-size:22px; margin:0 0 4px 0; font-weight:700;}
+  .page-head p{margin:0; color:var(--ink-soft); font-size:13.5px;}
+  .hidden{display:none !important;}
+
+  /* Cards */
+  .card{background:var(--paper-card); border:1px solid var(--line); border-radius:12px; padding:18px 20px;}
+  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px;}
+  @media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr);}}
+  .stat{padding:16px 18px;}
+  .stat .label{font-size:12.5px; color:var(--ink-soft); margin-bottom:8px;}
+  .stat .value{font-family:'Space Grotesk'; font-size:26px; font-weight:700;}
+  .stat.gold .value{color:var(--gold);}
+  .stat.green .value{color:var(--green);}
+  .stat.red .value{color:var(--red);}
+
+  .grid-2{display:grid; grid-template-columns:1.4fr 1fr; gap:16px;}
+  @media(max-width:900px){.grid-2{grid-template-columns:1fr;}}
+
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  th{text-align:left; color:var(--ink-soft); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.3px; padding:8px 10px; border-bottom:1px solid var(--line);}
+  td{padding:10px 10px; border-bottom:1px solid var(--line); vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  .tag{display:inline-block; padding:2px 9px; border-radius:20px; font-size:11.5px; font-weight:600;}
+  .tag.ok{background:var(--green-soft); color:var(--green);}
+  .tag.low{background:var(--red-soft); color:var(--red);}
+
+  .btn{
+    border:none; border-radius:8px; padding:10px 16px; font-size:13.5px; font-weight:600;
+    cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn-gold{background:var(--gold); color:#221904;}
+  .btn-gold:hover{background:#a5751f;}
+  .btn-outline{background:none; border:1px solid var(--line); color:var(--ink);}
+  .btn-outline:hover{border-color:var(--gold); color:var(--gold);}
+  .btn-ghost{background:none; border:none; color:var(--ink-soft); padding:4px 6px;}
+  .btn-ghost:hover{color:var(--red);}
+  .btn-sm{padding:5px 9px; font-size:12px; border-radius:6px;}
+  .btn-full{width:100%; justify-content:center;}
+  .btn-green{background:var(--green); color:#fff;}
+
+  input, select{
+    font-family:inherit; border:1px solid var(--line); border-radius:8px; padding:9px 11px;
+    font-size:13.5px; background:#fff; color:var(--ink); width:100%;
+  }
+  input:focus, select:focus{outline:none; border-color:var(--gold);}
+  label{font-size:12px; color:var(--ink-soft); display:block; margin-bottom:5px; font-weight:600;}
+  .field{margin-bottom:12px;}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+
+  .scan-bar{display:flex; gap:10px; margin-bottom:18px;}
+  .scan-bar input{font-size:15px; padding:12px 14px;}
+  .scan-bar .scan-ic{font-size:15px;}
+
+  /* Product grid for billing */
+  .prod-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:12px;}
+  .prod-tile{
+    background:#fff; border:1px solid var(--line); border-radius:10px; padding:13px;
+    cursor:pointer; transition:border-color .15s, transform .1s;
+  }
+  .prod-tile:hover{border-color:var(--gold); transform:translateY(-1px);}
+  .prod-tile:active{transform:translateY(0px) scale(0.98);}
+  .prod-tile .pname{font-weight:600; font-size:13.5px; margin-bottom:6px; line-height:1.3;}
+  .prod-tile .pprice{font-family:'Space Grotesk'; color:var(--gold); font-weight:700; font-size:15px;}
+  .prod-tile .pstock{font-size:11px; color:var(--ink-soft); margin-top:4px;}
+  .prod-tile.out{opacity:0.45; cursor:not-allowed;}
+
+  /* Receipt / cart */
+  .receipt{
+    background:#fff; border:1px solid var(--line); border-radius:2px;
+    position:relative; padding:18px 16px 16px 16px;
+    background-image:
+      radial-gradient(circle at 0 100%, transparent 6px, #fff 6.5px),
+      radial-gradient(circle at 100% 100%, transparent 6px, #fff 6.5px);
+  }
+  .receipt-serrated{
+    height:8px; width:100%;
+    background-image: linear-gradient(135deg, var(--paper) 25%, transparent 25%), linear-gradient(225deg, var(--paper) 25%, transparent 25%);
+    background-size: 12px 12px; background-position: bottom;
+    margin-top:-1px;
+  }
+  .receipt-head{text-align:center; border-bottom:1px dashed var(--line); padding-bottom:10px; margin-bottom:10px;}
+  .receipt-head .t1{font-family:'Space Grotesk'; font-weight:700; letter-spacing:1px; font-size:13px; color:var(--ink-soft);}
+  .cart-list{max-height:260px; overflow-y:auto; margin-bottom:10px;}
+  .cart-row{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--line); font-size:13px;}
+  .cart-row:last-child{border-bottom:none;}
+  .cart-row .ci-name{flex:1; padding-right:8px;}
+  .cart-row .ci-name .sub{font-size:11px; color:var(--ink-soft); font-family:'Space Grotesk';}
+  .qty-ctrl{display:flex; align-items:center; gap:6px; margin:0 8px;}
+  .qty-ctrl button{width:20px; height:20px; border-radius:5px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:12px; line-height:1;}
+  .cart-empty{text-align:center; color:var(--ink-soft); font-size:13px; padding:30px 10px;}
+  .receipt-totals{border-top:1px dashed var(--line); padding-top:10px; margin-top:6px;}
+  .trow{display:flex; justify-content:space-between; font-size:13.5px; padding:3px 0;}
+  .trow.grand{font-family:'Space Grotesk'; font-weight:700; font-size:18px; color:var(--ink); padding-top:8px; margin-top:4px; border-top:1px solid var(--line);}
+  .trow.grand .amt{color:var(--gold);}
+
+  /* Modal (checkout final page) */
+  .modal-back{position:fixed; inset:0; background:rgba(21,34,56,0.55); display:flex; align-items:center; justify-content:center; z-index:50;}
+  .modal{background:#fff; border-radius:14px; width:380px; max-width:92vw; padding:26px 26px 22px 26px;}
+  .modal h2{margin:0 0 4px 0; font-size:18px;}
+  .modal .sub{color:var(--ink-soft); font-size:13px; margin-bottom:18px;}
+  .pay-total{text-align:center; background:var(--gold-soft); border-radius:10px; padding:18px; margin-bottom:18px;}
+  .pay-total .lbl{font-size:12.5px; color:#7a5d1f; margin-bottom:4px;}
+  .pay-total .val{font-family:'Space Grotesk'; font-size:32px; font-weight:700; color:var(--gold);}
+  .pay-methods{display:flex; gap:8px; margin-bottom:18px;}
+  .pm-btn{flex:1; padding:10px 6px; border-radius:8px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:12.5px; font-weight:600; color:var(--ink-soft); font-family:inherit;}
+  .pm-btn.sel{border-color:var(--gold); background:var(--gold-soft); color:#7a5d1f;}
+  .modal-actions{display:flex; gap:8px;}
+  .success-tick{width:52px; height:52px; border-radius:50%; background:var(--green-soft); color:var(--green); display:flex; align-items:center; justify-content:center; font-size:26px; margin:0 auto 14px auto;}
+
+  .toast{position:fixed; bottom:20px; right:20px; background:var(--ink); color:#fff; padding:12px 18px; border-radius:8px; font-size:13.5px; z-index:60; box-shadow:0 6px 18px rgba(0,0,0,0.2);}
+
+  ::-webkit-scrollbar{width:7px;}
+  ::-webkit-scrollbar-thumb{background:var(--line); border-radius:10px;}
+
+  /* ---- Mobile layout ---- */
+  @media (max-width: 768px){
+    .app{flex-direction:column;}
+    .sidebar{
+      position:fixed; bottom:0; left:0; right:0; top:auto; width:100%; height:66px;
+      flex-direction:row; align-items:stretch; justify-content:space-around;
+      padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px)) 6px; z-index:40;
+      box-shadow:0 -2px 14px rgba(0,0,0,0.18); border-top:1px solid rgba(255,255,255,0.08);
+    }
+    .brand, .sidebar-foot{display:none;}
+    .nav-btn{
+      flex-direction:column; justify-content:center; gap:2px; flex:1;
+      font-size:10px; padding:6px 2px; text-align:center; border-radius:10px; margin-bottom:0;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .nav-btn .ic{font-size:19px;}
+    .nav-btn.active{background:var(--gold);}
+    .main{padding:16px 14px 90px 14px;}
+    .page-head{flex-direction:column; align-items:flex-start; gap:6px;}
+    .page-head h1{font-size:19px;}
+    .stat-grid{grid-template-columns:repeat(2,1fr); gap:10px;}
+    .stat{padding:13px 14px;}
+    .stat .value{font-size:20px;}
+    .grid-2{grid-template-columns:1fr;}
+    .field-row{grid-template-columns:1fr;}
+    .scan-bar{flex-wrap:wrap;}
+    .scan-bar input{min-width:0; flex:1 1 100%;}
+    .prod-grid{grid-template-columns:repeat(2,1fr);}
+    .modal{width:92vw;}
+
+    /* Responsive card-style table (Products list) */
+    #products-body{display:block;}
+    #products-body tr{
+      display:block; background:#fff; border:1px solid var(--line); border-radius:10px;
+      padding:10px 12px; margin-bottom:10px;
+    }
+    #tab-products table thead{display:none;}
+    #products-body td{
+      display:flex; justify-content:space-between; align-items:center;
+      border:none; padding:6px 0; font-size:13px;
+    }
+    #products-body td[data-label]:not([data-label=""])::before{
+      content: attr(data-label); color:var(--ink-soft); font-size:11.5px; font-weight:600;
+    }
+    #products-body td:last-child{justify-content:flex-end; gap:8px; padding-top:8px; border-top:1px solid var(--line); margin-top:4px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="brand">
+      <div class="mark">கணக்கு போக்கு</div>
+      <div class="sub">கடை பில்லிங் மேலாண்மை</div>
+    </div>
+    <button class="nav-btn active" data-tab="dashboard"><span class="ic">◆</span> டேஷ்போர்டு</button>
+    <button class="nav-btn" data-tab="products"><span class="ic">▤</span> பொருட்கள்</button>
+    <button class="nav-btn" data-tab="billing"><span class="ic">₹</span> பில்லிங்</button>
+    <button class="nav-btn" data-tab="settings"><span class="ic">⚙</span> செட்டிங்ஸ்</button>
+    <div class="sidebar-foot">தரவு இந்த சாதனத்தில் சேமிக்கப்படுகிறது.</div>
+  </div>
+
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard">
+      <div class="page-head">
+        <div>
+          <h1>டேஷ்போர்டு</h1>
+          <p>மொத்த வியாபாரம் மற்றும் இருப்பு நிலவரம்</p>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="card stat gold"><div class="label">மொத்த வியாபாரம் (இதுவரை)</div><div class="value num" id="st-revenue">₹0</div></div>
+        <div class="card stat green"><div class="label">இருப்பு மதிப்பு</div><div class="value num" id="st-stockvalue">₹0</div></div>
+        <div class="card stat"><div class="label">மொத்த பொருட்கள்</div><div class="value num" id="st-items">0</div></div>
+        <div class="card stat red"><div class="label">குறைவான இருப்பு</div><div class="value num" id="st-low">0</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin-top:0;">சமீபத்திய பில்கள்</h3>
+          <table><thead><tr><th>நேரம்</th><th>பொருட்கள்</th><th>மொத்தம்</th></tr></thead>
+            <tbody id="recent-sales-body"></tbody>
+          </table>
+          <div id="no-sales" class="cart-empty hidden">இதுவரை பில் எதுவும் இல்லை</div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0;">அதிக விற்பனை பொருட்கள்</h3>
+          <div id="top-products"></div>
+          <div id="no-top" class="cart-empty hidden">தரவு இல்லை</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRODUCTS -->
+    <div id="tab-products" class="hidden">
+      <div class="page-head">
+        <div>
+          <h1>பொருட்கள் / இருப்பு</h1>
+          <p>பார்கோடு ஸ்கேன் செய்யவும் அல்லது கைமுறையாக சேர்க்கவும்</p>
+        </div>
+        <button class="btn btn-outline" id="pdf-export-btn">📄 PDF பதிவிறக்கம்</button>
+      </div>
+
+      <div class="scan-bar">
+        <input id="scan-input" type="text" placeholder="பார்கோடு தட்டச்சு செய்து Enter அழுத்தவும்" autocomplete="off">
+        <button class="btn btn-outline cam-btn" data-target="products" title="கேமரா மூலம் ஸ்கேன்">📷</button>
+        <button class="btn btn-gold" id="scan-add-btn">+ புதிய பொருள் சேர்</button>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin-top:0;">இருப்பு பட்டியல்</h3>
+          <table>
+            <thead><tr><th>பெயர்</th><th>பார்கோடு</th><th>விலை</th><th>இருப்பு</th><th>நிலை</th><th></th></tr></thead>
+            <tbody id="products-body"></tbody>
+          </table>
+          <div id="no-products" class="cart-empty hidden">இன்னும் பொருட்கள் சேர்க்கவில்லை</div>
+        </div>
+
+        <div class="card" id="product-form-card">
+          <h3 style="margin-top:0;" id="form-title">புதிய பொருள் சேர்</h3>
+          <input type="hidden" id="pf-editid">
+          <div class="field">
+            <label>பொருளின் பெயர்</label>
+            <input id="pf-name" placeholder="எ.கா. பாஸ்மதி அரிசி 1kg">
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>பார்கோடு</label>
+              <input id="pf-barcode" placeholder="எண்கள்">
+            </div>
+            <div class="field">
+              <label>வகை</label>
+              <input id="pf-category" placeholder="எ.கா. மளிகை">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>விற்பனை விலை (₹)</label>
+              <input id="pf-price" type="number" min="0" step="0.01" placeholder="0.00">
+            </div>
+            <div class="field">
+              <label>இருப்பு எண்ணிக்கை</label>
+              <input id="pf-stock" type="number" min="0" step="1" placeholder="0">
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:14px;">
+            <button class="btn btn-gold btn-full" id="pf-save">சேமி</button>
+            <button class="btn btn-outline hidden" id="pf-cancel">ரத்து</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BILLING -->
+    <div id="tab-billing" class="hidden">
+      <div class="page-head">
+        <div>
+          <h1>பில்லிங்</h1>
+          <p>பொருளைத் தொடவும் — உடனே பில்லில் சேரும்</p>
+        </div>
+      </div>
+      <div class="scan-bar">
+        <input id="bill-scan-input" type="text" placeholder="பார்கோடு தட்டச்சு செய்து Enter அழுத்தவும்" autocomplete="off">
+        <button class="btn btn-outline cam-btn" data-target="billing" title="கேமரா மூலம் ஸ்கேன்">📷</button>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="prod-grid" id="billing-prod-grid"></div>
+          <div id="no-billing-products" class="cart-empty hidden">முதலில் பொருட்கள் பக்கத்தில் இருப்பு சேர்க்கவும்</div>
+        </div>
+
+        <div>
+          <div class="receipt">
+            <div class="receipt-head">
+              <div class="t1">தற்போதைய பில்</div>
+            </div>
+            <div class="cart-list" id="cart-list">
+              <div class="cart-empty">பொருட்களைத் தொடவும்</div>
+            </div>
+            <div class="receipt-totals">
+              <div class="trow"><span>துணை மொத்தம்</span><span class="num" id="cart-subtotal">₹0</span></div>
+              <div class="trow grand"><span>மொத்தம்</span><span class="num amt" id="cart-grand">₹0</span></div>
+            </div>
+          </div>
+          <div class="receipt-serrated"></div>
+          <button class="btn btn-gold btn-full" style="margin-top:14px; padding:13px;" id="checkout-btn">பில் செய் →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="tab-settings" class="hidden">
+      <div class="page-head">
+        <div>
+          <h1>செட்டிங்ஸ்</h1>
+          <p>Google Sheets-உடன் தரவை ஒத்திசைவு செய்யவும்</p>
+        </div>
+      </div>
+      <div class="card" style="max-width:480px;">
+        <h3 style="margin-top:0;">Google Sheets Backup</h3>
+        <p style="font-size:13px; color:var(--ink-soft); line-height:1.6;">Google Apps Script "Web App URL"-ஐ கீழே ஒட்டவும்.</p>
+        <div class="field">
+          <label>Web App URL</label>
+          <input id="sheet-url" placeholder="https://script.google.com/macros/s/.../exec">
+        </div>
+        <button class="btn btn-outline btn-full" id="sheet-url-save" style="margin-bottom:14px;">URL சேமி</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-gold btn-full" id="sheet-push-btn">⬆ Sheet-க்கு அனுப்பு</button>
+          <button class="btn btn-green btn-full" id="sheet-pull-btn">⬇ Sheet-இலிருந்து பெறு</button>
+        </div>
+        <div id="sheet-status" style="font-size:12.5px; color:var(--ink-soft); margin-top:12px;"></div>
+      </div>
+
+      <div class="card" style="max-width:480px; margin-top:16px; border-color:var(--red-soft);">
+        <h3 style="margin-top:0; color:var(--red);">ஆபத்தான பகுதி</h3>
+        <p style="font-size:13px; color:var(--ink-soft); line-height:1.6;">இதை அழுத்தினால் இந்த ஃபோனில் உள்ள எல்லா பொருட்கள், பில்கள் தகவலும் நிரந்தரமாக அழிந்துவிடும். புதிய ஆப்பாக தொடங்க மட்டும் இதை பயன்படுத்தவும்.</p>
+        <button class="btn btn-full" style="background:var(--red); color:#fff;" id="reset-app-btn">🗑 எல்லா தரவையும் நீக்கு</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- CHECKOUT MODAL -->
+<div cla
